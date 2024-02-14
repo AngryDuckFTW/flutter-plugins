@@ -1505,8 +1505,6 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             Log.i("FLUTTER_HEALTH::SUCCESS", "returning $stepsInInterval steps")
             result.success(stepsInInterval)
         } catch (e: Exception) {
-            Log.i("------------------------------------------------------- STEPS ERROR -------------------------------------------------------")
-            Log.i(e)
             Log.i("FLUTTER_HEALTH::ERROR", "unable to return steps")
             result.success(null)
         }
