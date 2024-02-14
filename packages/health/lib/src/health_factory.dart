@@ -589,7 +589,7 @@ class HealthFactory {
     return stepsCount;
   }
 
-  Future<List<int?>?> getTotalStepsInIntervalByDay(
+  Future<List<Object?>?> getTotalStepsInIntervalByDay(
       DateTime startTime,
       DateTime endTime,
       ) async {
@@ -597,14 +597,14 @@ class HealthFactory {
       'startTime': startTime.millisecondsSinceEpoch,
       'endTime': endTime.millisecondsSinceEpoch
     };
-    final stepsByDay = await _channel.invokeMethod<List<int?>?>(
+    final stepsByDay = await _channel.invokeMethod<List<Object?>>(
       'getTotalStepsInIntervalByDay',
       args,
     );
     return stepsByDay;
   }
 
-  Future<List<int?>?> getTotalStepsInIntervalByHours(
+  Future<List<Object?>?> getTotalStepsInIntervalByHours(
       DateTime startTime,
       DateTime endTime,
       ) async {
@@ -612,7 +612,7 @@ class HealthFactory {
       'startTime': startTime.millisecondsSinceEpoch,
       'endTime': endTime.millisecondsSinceEpoch
     };
-    final stepsByHours = await _channel.invokeMethod<List<int?>?>(
+    final stepsByHours = await _channel.invokeMethod<List<Object?>>(
       'getTotalStepsInIntervalByHours',
       args,
     );
