@@ -21,6 +21,8 @@ import androidx.health.connect.client.records.MealType.MEAL_TYPE_LUNCH
 import androidx.health.connect.client.records.MealType.MEAL_TYPE_SNACK
 import androidx.health.connect.client.records.MealType.MEAL_TYPE_UNKNOWN
 import androidx.health.connect.client.request.AggregateRequest
+import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
+import androidx.health.connect.client.request.AggregateGroupByDurationRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.*
@@ -48,6 +50,7 @@ import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
 import io.flutter.plugin.common.PluginRegistry.Registrar
 import kotlinx.coroutines.*
 import java.time.*
+import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.*
 import java.util.concurrent.*
@@ -1441,6 +1444,74 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 result.success(false)
             }
     }
+    private fun getTotalStepsInIntervalByDay(call: MethodCall, result: Result) = scope.launch {
+        val start = call.argument<Long>("startTime")!!
+        val end = call.argument<Long>("endTime")!!
+
+        if (useHealthConnectIfAvailable && healthConnectAvailable) {
+            try {
+                val startInstant = Instant.ofEpochMilli(start)
+                val endInstant = Instant.ofEpochMilli(end)
+
+                val response =
+                        healthConnectClient.aggregateGroupByPeriod(
+                                AggregateGroupByPeriodRequest(
+                                        metrics = setOf(StepsRecord.COUNT_TOTAL),
+                                        timeRangeFilter = TimeRangeFilter.between(startInstant, endInstant),
+                                        timeRangeSlicer = Period.ofDays(1)
+                                )
+                        )
+
+                val totalStepsList = response.map { dailyResult ->
+                    // The result may be null if no data is available in the time range.
+                    dailyResult.result[StepsRecord.COUNT_TOTAL] ?: 0
+                }
+                Log.i("FLUTTER_HEALTH::SUCCESS", "returning steps for ${totalStepsList.size} days")
+                result.success(totalStepsList)
+            } catch (e: Exception) {
+                Log.i("FLUTTER_HEALTH::ERROR", "unable to return steps")
+                result.success(null)
+            }
+        } else {
+            Log.i("FLUTTER_HEALTH::ERROR", "Only Health Connect Supported")
+            result.success(null)
+        }
+    }
+
+    private fun getTotalStepsInIntervalByHours(call: MethodCall, result: Result) = scope.launch {
+        val start = call.argument<Long>("startTime")!!
+        val end = call.argument<Long>("endTime")!!
+
+        if (useHealthConnectIfAvailable && healthConnectAvailable) {
+            try {
+                val startInstant = Instant.ofEpochMilli(start)
+                val endInstant = Instant.ofEpochMilli(end)
+
+                val response =
+                        healthConnectClient.aggregateGroupByDuration(
+                                AggregateGroupByDurationRequest(
+                                        metrics = setOf(StepsRecord.COUNT_TOTAL),
+                                        timeRangeFilter = TimeRangeFilter.between(startInstant, endInstant),
+                                        timeRangeSlicer = Duration.ofHours(1)
+                                )
+                        )
+
+                val totalStepsList = response.map { hourlyResult ->
+                    // The result may be null if no data is available in the time range.
+                    hourlyResult.result[StepsRecord.COUNT_TOTAL] ?: 0
+                }
+                Log.i("FLUTTER_HEALTH::SUCCESS", "returning steps for ${totalStepsList.size} days")
+                result.success(totalStepsList)
+            } catch (e: Exception) {
+                Log.i("FLUTTER_HEALTH::ERROR", "unable to return steps")
+                result.success(null)
+            }
+        } else {
+            Log.i("FLUTTER_HEALTH::ERROR", "Only Health Connect Supported")
+            result.success(null)
+        }
+    }
+
 
     private fun getTotalStepsInInterval(call: MethodCall, result: Result) {
         val start = call.argument<Long>("startTime")!!
@@ -1561,6 +1632,8 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             "writeData" -> writeData(call, result)
             "delete" -> delete(call, result)
             "getTotalStepsInInterval" -> getTotalStepsInInterval(call, result)
+            "getTotalStepsInIntervalByDay" -> getTotalStepsInIntervalByDay(call, result)
+            "getTotalStepsInIntervalByHours" -> getTotalStepsInIntervalByHours(call, result)
             "writeWorkoutData" -> writeWorkoutData(call, result)
             "writeBloodPressure" -> writeBloodPressure(call, result)
             "writeBloodOxygen" -> writeBloodOxygen(call, result)

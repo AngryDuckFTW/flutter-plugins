@@ -589,6 +589,36 @@ class HealthFactory {
     return stepsCount;
   }
 
+  Future<List<int?>?> getTotalStepsInIntervalByDay(
+      DateTime startTime,
+      DateTime endTime,
+      ) async {
+    final args = <String, dynamic>{
+      'startTime': startTime.millisecondsSinceEpoch,
+      'endTime': endTime.millisecondsSinceEpoch
+    };
+    final stepsByDay = await _channel.invokeMethod<int?>(
+      'getTotalStepsInIntervalByDay',
+      args,
+    );
+    return stepsByDay;
+  }
+
+  Future<List<int?>?> getTotalStepsInIntervalByHours(
+      DateTime startTime,
+      DateTime endTime,
+      ) async {
+    final args = <String, dynamic>{
+      'startTime': startTime.millisecondsSinceEpoch,
+      'endTime': endTime.millisecondsSinceEpoch
+    };
+    final stepsByHours = await _channel.invokeMethod<int?>(
+      'getTotalStepsInIntervalByHours',
+      args,
+    );
+    return stepsByHours;
+  }
+
   /// Assigns numbers to specific [HealthDataType]s.
   int _alignValue(HealthDataType type) {
     switch (type) {
