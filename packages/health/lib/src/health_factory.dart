@@ -597,7 +597,7 @@ class HealthFactory {
       'startTime': startTime.millisecondsSinceEpoch,
       'endTime': endTime.millisecondsSinceEpoch
     };
-    final stepsByDay = await _channel.invokeMethod<int?>(
+    final stepsByDay = await _channel.invokeMethod<List<int?>?>(
       'getTotalStepsInIntervalByDay',
       args,
     );
@@ -612,7 +612,7 @@ class HealthFactory {
       'startTime': startTime.millisecondsSinceEpoch,
       'endTime': endTime.millisecondsSinceEpoch
     };
-    final stepsByHours = await _channel.invokeMethod<int?>(
+    final stepsByHours = await _channel.invokeMethod<List<int?>?>(
       'getTotalStepsInIntervalByHours',
       args,
     );
