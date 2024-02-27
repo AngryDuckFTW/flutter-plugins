@@ -1702,6 +1702,8 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             "getTotalStepsInInterval" -> getTotalStepsInInterval(call, result)
             "getTotalStepsInIntervalByDay" -> getTotalStepsInIntervalByDay(call, result)
             "getTotalStepsInIntervalByHours" -> getTotalStepsInIntervalByHours(call, result)
+            "getTotalHydrationInIntervalByDay" -> getTotalHydrationInIntervalByDay(call, result)
+            "getTotalHydrationInIntervalByHours" -> getTotalHydrationInIntervalByHours(call, result)
             "writeWorkoutData" -> writeWorkoutData(call, result)
             "writeBloodPressure" -> writeBloodPressure(call, result)
             "writeBloodOxygen" -> writeBloodOxygen(call, result)
