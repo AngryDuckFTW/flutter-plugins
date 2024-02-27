@@ -221,7 +221,14 @@ class _HealthAppState extends State<HealthApp> {
 
     if (stepsPermission) {
       try {
-        steps = await health.getTotalStepsInInterval(midnight, now);
+        // steps = await health.getTotalStepsInInterval(midnight, now);
+        var stepsByHours = await health.getTotalStepsInIntervalByHours(midnight, now);
+        if(stepsByHours != null){
+          stepsByHours!.forEach((element) {
+            var steps = element as int;
+            print(steps);
+          });
+        }
       } catch (error) {
         print("Caught exception in getTotalStepsInInterval: $error");
       }

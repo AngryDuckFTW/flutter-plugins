@@ -1444,6 +1444,75 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                 result.success(false)
             }
     }
+
+    private fun getTotalHydrationInIntervalByDay(call: MethodCall, result: Result) = scope.launch {
+        val start = call.argument<Long>("startTime")!!
+        val end = call.argument<Long>("endTime")!!
+
+        if (useHealthConnectIfAvailable && healthConnectAvailable) {
+            try {
+                val startInstant = Instant.ofEpochMilli(start)
+                val endInstant = Instant.ofEpochMilli(end)
+
+                val response =
+                        healthConnectClient.aggregateGroupByPeriod(
+                                AggregateGroupByPeriodRequest(
+                                        metrics = setOf(HydrationRecord.COUNT_TOTAL),
+                                        timeRangeFilter = TimeRangeFilter.between(startInstant, endInstant),
+                                        timeRangeSlicer = Period.ofDays(1)
+                                )
+                        )
+
+                val totalHydrationList = response.map { dailyResult ->
+                    // The result may be null if no data is available in the time range.
+                    dailyResult.result[(HydrationRecord.COUNT_TOTAL] ?: 0
+                }
+                Log.i("FLUTTER_HEALTH::SUCCESS", "returning hydration for ${totalHydrationList.size} days")
+                result.success(totalStepsList)
+            } catch (e: Exception) {
+                Log.i("FLUTTER_HEALTH::ERROR", "unable to return hydration")
+                result.success(null)
+            }
+        } else {
+            Log.i("FLUTTER_HEALTH::ERROR", "Only Health Connect Supported")
+            result.success(null)
+        }
+    }
+
+    private fun getTotalHydrationInIntervalByHours(call: MethodCall, result: Result) = scope.launch {
+        val start = call.argument<Long>("startTime")!!
+        val end = call.argument<Long>("endTime")!!
+
+        if (useHealthConnectIfAvailable && healthConnectAvailable) {
+            try {
+                val startInstant = Instant.ofEpochMilli(start)
+                val endInstant = Instant.ofEpochMilli(end)
+
+                val response =
+                        healthConnectClient.aggregateGroupByDuration(
+                                AggregateGroupByDurationRequest(
+                                        metrics = setOf(HydrationRecord.COUNT_TOTAL),
+                                        timeRangeFilter = TimeRangeFilter.between(startInstant, endInstant),
+                                        timeRangeSlicer = Duration.ofHours(1)
+                                )
+                        )
+
+                val totalHydrationList = response.map { hourlyResult ->
+                    // The result may be null if no data is available in the time range.
+                    hourlyResult.result[HydrationRecord.COUNT_TOTAL] ?: 0
+                }
+                Log.i("FLUTTER_HEALTH::SUCCESS", "returning hydration for ${totalHydrationList.size} days")
+                result.success(totalStepsList)
+            } catch (e: Exception) {
+                Log.i("FLUTTER_HEALTH::ERROR", "unable to return hydration")
+                result.success(null)
+            }
+        } else {
+            Log.i("FLUTTER_HEALTH::ERROR", "Only Health Connect Supported")
+            result.success(null)
+        }
+    }
+
     private fun getTotalStepsInIntervalByDay(call: MethodCall, result: Result) = scope.launch {
         val start = call.argument<Long>("startTime")!!
         val end = call.argument<Long>("endTime")!!
@@ -1511,7 +1580,6 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             result.success(null)
         }
     }
-
 
     private fun getTotalStepsInInterval(call: MethodCall, result: Result) {
         val start = call.argument<Long>("startTime")!!
