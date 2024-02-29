@@ -1465,12 +1465,13 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
 
                 val totalHydrationList = response.map { dailyResult ->
                     // The result may be null if no data is available in the time range.
-                    dailyResult.result[HydrationRecord.VOLUME_TOTAL] ?: 0
+                    dailyResult.result[HydrationRecord.VOLUME_TOTAL] ?: 0.0
                 }
                 Log.i("FLUTTER_HEALTH::SUCCESS", "returning hydration for ${totalHydrationList.size} days")
                 result.success(totalHydrationList)
             } catch (e: Exception) {
                 Log.i("FLUTTER_HEALTH::ERROR", "unable to return hydration")
+                Log.i("FLUTTER_HEALTH::ERROR", e.message ?: "No error message available")
                 result.success(null)
             }
         } else {
@@ -1499,12 +1500,13 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
 
                 val totalHydrationList = response.map { hourlyResult ->
                     // The result may be null if no data is available in the time range.
-                    hourlyResult.result[HydrationRecord.VOLUME_TOTAL] ?: 0
+                    hourlyResult.result[HydrationRecord.VOLUME_TOTAL] ?: 0.0
                 }
                 Log.i("FLUTTER_HEALTH::SUCCESS", "returning hydration for ${totalHydrationList.size} days")
                 result.success(totalHydrationList)
             } catch (e: Exception) {
                 Log.i("FLUTTER_HEALTH::ERROR", "unable to return hydration")
+                Log.i("FLUTTER_HEALTH::ERROR", e.message ?: "No error message available")
                 result.success(null)
             }
         } else {
