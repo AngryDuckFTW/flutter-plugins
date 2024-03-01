@@ -1463,12 +1463,19 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                                 )
                         )
 
-                val totalHydrationList = response.map { dailyResult ->
-                    // The result may be null if no data is available in the time range.
-                    dailyResult.result[HydrationRecord.VOLUME_TOTAL] ?: 0.0
+
+                val hydrationList = mutableListOf<Double>()
+                for (item in response) {
+                    var volume = item.result[HydrationRecord.VOLUME_TOTAL] as Volume?
+                    if(volume != null){
+                        hydrationList.add(volume.inLiters)
+                    } else {
+                        hydrationList.add(0.0);
+                    }
                 }
-                Log.i("FLUTTER_HEALTH::SUCCESS", "returning hydration for ${totalHydrationList.size} days")
-                result.success(totalHydrationList)
+
+                Log.i("FLUTTER_HEALTH::SUCCESS", "returning hydration for ${hydrationList.size} days")
+                result.success(hydrationList)
             } catch (e: Exception) {
                 Log.i("FLUTTER_HEALTH::ERROR", "unable to return hydration")
                 Log.i("FLUTTER_HEALTH::ERROR", e.message ?: "No error message available")
@@ -1488,7 +1495,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
             try {
                 val startInstant = Instant.ofEpochMilli(start)
                 val endInstant = Instant.ofEpochMilli(end)
-
+                Log.i("TOMS", "DOING SOMETHING ")
                 val response =
                         healthConnectClient.aggregateGroupByDuration(
                                 AggregateGroupByDurationRequest(
@@ -1498,12 +1505,18 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
                                 )
                         )
 
-                val totalHydrationList = response.map { hourlyResult ->
-                    // The result may be null if no data is available in the time range.
-                    hourlyResult.result[HydrationRecord.VOLUME_TOTAL] ?: 0.0
+                val hydrationList = mutableListOf<Double>()
+                for (item in response) {
+                    var volume = item.result[HydrationRecord.VOLUME_TOTAL] as Volume?
+                    if(volume != null){
+                        hydrationList.add(volume.inLiters)
+                    } else {
+                        hydrationList.add(0.0);
+                    }
                 }
-                Log.i("FLUTTER_HEALTH::SUCCESS", "returning hydration for ${totalHydrationList.size} days")
-                result.success(totalHydrationList)
+
+                Log.i("FLUTTER_HEALTH::SUCCESS", "returning hydration for ${hydrationList.size} hours")
+                result.success(hydrationList)
             } catch (e: Exception) {
                 Log.i("FLUTTER_HEALTH::ERROR", "unable to return hydration")
                 Log.i("FLUTTER_HEALTH::ERROR", e.message ?: "No error message available")
@@ -2014,6 +2027,7 @@ class HealthPlugin(private var channel: MethodChannel? = null) :
     // TODO: Find alternative to SOURCE_ID or make it nullable?
     fun convertRecord(record: Any, dataType: String): List<Map<String, Any>> {
         val metadata = (record as Record).metadata
+
         when (record) {
             is WeightRecord -> return listOf(
                 mapOf<String, Any>(
