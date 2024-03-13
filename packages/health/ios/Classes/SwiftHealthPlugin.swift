@@ -147,6 +147,31 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         else if call.method.elementsEqual("getTotalStepsInInterval") {
             getTotalStepsInInterval(call: call, result: result)
         }
+
+        /// Handle getTotalStepsInIntervalByDay
+        else if call.method.elementsEqual("getTotalStepsInIntervalByDay") {
+            getTotalStepsInIntervalByDay(call: call, result: result)
+        }
+
+        /// Handle getTotalStepsInIntervalByHour
+        else if call.method.elementsEqual("getTotalStepsInIntervalByHours") {
+            getTotalStepsInIntervalByHour(call: call, result: result)
+        }
+
+        /// Handle getTotalHydrationInInterval
+        else if call.method.elementsEqual("getTotalHydrationInInterval") {
+            getTotalHydrationInInterval(call: call, result: result)
+        }
+
+        /// Handle getTotalHydrationInIntervalByDay
+        else if call.method.elementsEqual("getTotalHydrationInIntervalByDay") {
+            getTotalHydrationInIntervalByDay(call: call, result: result)
+        }
+
+        /// Handle getTotalHydrationInIntervalByHour
+        else if call.method.elementsEqual("getTotalHydrationInIntervalByHours") {
+            getTotalHydrationInIntervalByHour(call: call, result: result)
+        }
         
         /// Handle writeData
         else if call.method.elementsEqual("writeData") {
@@ -432,37 +457,37 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         }
         let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
         let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
-            
+
         var mealTypeString = mealType ?? "UNKNOWN"
         var metadata = ["HKFoodMeal": "\(mealTypeString)"]
-        
+
         if(name != nil) {
             metadata[HKMetadataKeyFoodType] = "\(name!)"
         }
-        
+
         var nutrition = Set<HKSample>()
-        
+
         let caloriesSample = HKQuantitySample(type: HKSampleType.quantityType(forIdentifier: .dietaryEnergyConsumed)!, quantity: HKQuantity(unit: HKUnit.kilocalorie(), doubleValue: calories), start: dateFrom, end: dateTo, metadata: metadata)
         nutrition.insert(caloriesSample)
-        
+
         if(carbs > 0) {
             let carbsSample = HKQuantitySample(type: HKSampleType.quantityType(forIdentifier: .dietaryCarbohydrates)!, quantity: HKQuantity(unit: HKUnit.gram(), doubleValue: carbs), start: dateFrom, end: dateTo, metadata: metadata)
             nutrition.insert(carbsSample)
         }
-        
+
         if(protein > 0) {
             let proteinSample = HKQuantitySample(type: HKSampleType.quantityType(forIdentifier: .dietaryProtein)!, quantity: HKQuantity(unit: HKUnit.gram(), doubleValue: protein), start: dateFrom, end: dateTo, metadata: metadata)
             nutrition.insert(proteinSample)
         }
-        
+
         if(fat > 0) {
             let fatSample = HKQuantitySample(type: HKSampleType.quantityType(forIdentifier: .dietaryFatTotal)!, quantity: HKQuantity(unit: HKUnit.gram(), doubleValue: fat), start: dateFrom, end: dateTo, metadata: metadata)
             nutrition.insert(fatSample)
         }
-        
+
         if #available(iOS 15.0, *){
             let meal = HKCorrelation.init(type: HKCorrelationType.init(HKCorrelationTypeIdentifier.food), start: dateFrom, end: dateTo, objects: nutrition, metadata: metadata)
-            
+
             HKHealthStore().save(meal, withCompletion: { (success, error) in
                 if let err = error {
                     print("Error Saving Meal Sample: \(err.localizedDescription)")
@@ -805,47 +830,278 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         let arguments = call.arguments as? NSDictionary
         let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
         let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
-        
         // Convert dates from milliseconds to Date()
         let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
         let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
-        
         let sampleType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
         let predicate = HKQuery.predicateForSamples(
             withStart: dateFrom, end: dateTo, options: .strictStartDate)
-        
         let query = HKStatisticsQuery(
             quantityType: sampleType,
             quantitySamplePredicate: predicate,
             options: .cumulativeSum
         ) { query, queryResult, error in
-            
             guard let queryResult = queryResult else {
                 let error = error! as NSError
                 print("Error getting total steps in interval \(error.localizedDescription)")
-                
                 DispatchQueue.main.async {
                     result(nil)
                 }
                 return
             }
-            
             var steps = 0.0
-            
             if let quantity = queryResult.sumQuantity() {
                 let unit = HKUnit.count()
                 steps = quantity.doubleValue(for: unit)
             }
-            
             let totalSteps = Int(steps)
             DispatchQueue.main.async {
                 result(totalSteps)
             }
         }
-        
         HKHealthStore().execute(query)
     }
-    
+
+    func getTotalStepsInIntervalByDay(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let arguments = call.arguments as? NSDictionary
+        let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
+        let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
+
+        // Convert dates from milliseconds to Date()
+        let startDate = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
+        let endDate = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
+
+        let sampleType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        let predicate = HKQuery.predicateForSamples(
+            withStart: startDate, end: endDate, options: .strictStartDate)
+
+        let calendar = Calendar.current
+        let interval = DateComponents(day: 1)
+        var anchorComponents = calendar.dateComponents([.weekday, .month, .year], from: startDate)
+        anchorComponents.hour = 0
+
+        let query = HKStatisticsCollectionQuery(quantityType: sampleType,
+                                                quantitySamplePredicate: predicate,
+                                                options: .cumulativeSum,
+                                                anchorDate: calendar.date(from: anchorComponents)!,
+                                                intervalComponents: interval)
+
+        query.initialResultsHandler = { query, queryResult, error in
+            guard let queryResult = queryResult else {
+                let error = error! as NSError
+                print("Error getting steps per day of week: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    result(nil)
+                }
+                return
+            }
+
+            var stepsPerDay: [Int] = []
+
+            queryResult.enumerateStatistics(from: startDate, to: endDate) { statistics, stop in
+                if let quantity = statistics.sumQuantity() {
+                    let steps = quantity.doubleValue(for: HKUnit.count())
+                    stepsPerDay.append(Int(steps))
+                } else {
+                    stepsPerDay.append(0)
+                }
+            }
+
+            DispatchQueue.main.async {
+                result(stepsPerDay)
+            }
+        }
+
+        HKHealthStore().execute(query)
+    }
+
+    func getTotalStepsInIntervalByHour(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let arguments = call.arguments as? NSDictionary
+        let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
+        let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
+
+        let startDate = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
+        let endDate = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
+
+        let sampleType = HKQuantityType.quantityType(forIdentifier: .stepCount)!
+        let predicate = HKQuery.predicateForSamples(
+            withStart: startDate, end: endDate, options: .strictStartDate)
+
+        let interval = DateComponents(hour: 1)
+
+        let query = HKStatisticsCollectionQuery(quantityType: sampleType,
+                                                quantitySamplePredicate: predicate,
+                                                options: .cumulativeSum,
+                                                anchorDate: startDate,
+                                                intervalComponents: interval)
+
+        query.initialResultsHandler = { query, queryResult, error in
+            guard let queryResult = queryResult else {
+                let error = error! as NSError
+                print("Error getting steps per hour of day: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    result(nil)
+                }
+                return
+            }
+
+            var stepsPerHour: [Int] = Array(repeating: 0, count: 24)
+
+            queryResult.enumerateStatistics(from: startDate, to: endDate) { statistics, stop in
+                let calendar = Calendar.current
+                let hour = calendar.component(.hour, from: statistics.startDate)
+                if let quantity = statistics.sumQuantity() {
+                    let steps = quantity.doubleValue(for: HKUnit.count())
+                    stepsPerHour[hour] = Int(steps)
+                }
+            }
+
+            DispatchQueue.main.async {
+                result(stepsPerHour)
+            }
+        }
+
+        HKHealthStore().execute(query)
+    }
+
+    func getTotalHydrationInInterval(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let arguments = call.arguments as? NSDictionary
+        let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
+        let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
+        // Convert dates from milliseconds to Date()
+        let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
+        let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
+        let sampleType = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
+        let predicate = HKQuery.predicateForSamples(
+            withStart: dateFrom, end: dateTo, options: .strictStartDate)
+        let query = HKStatisticsQuery(
+            quantityType: sampleType,
+            quantitySamplePredicate: predicate,
+            options: .cumulativeSum
+        ) { query, queryResult, error in
+            guard let queryResult = queryResult else {
+                let error = error! as NSError
+                print("Error getting total hydration in interval \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    result(nil)
+                }
+                return
+            }
+            var water = 0.0
+            if let quantity = queryResult.sumQuantity() {
+                let unit = HKUnit.count()
+                water = quantity.doubleValue(for: unit)
+            }
+            let totalWater = Int(water)
+            DispatchQueue.main.async {
+                result(totalWater)
+            }
+        }
+        HKHealthStore().execute(query)
+    }
+
+    func getTotalHydrationInIntervalByDay(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let arguments = call.arguments as? NSDictionary
+        let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
+        let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
+
+        // Convert dates from milliseconds to Date()
+        let startDate = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
+        let endDate = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
+
+        let sampleType = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
+        let predicate = HKQuery.predicateForSamples(
+            withStart: startDate, end: endDate, options: .strictStartDate)
+
+        let calendar = Calendar.current
+        let interval = DateComponents(day: 1)
+        var anchorComponents = calendar.dateComponents([.weekday, .month, .year], from: startDate)
+        anchorComponents.hour = 0
+
+        let query = HKStatisticsCollectionQuery(quantityType: sampleType,
+                                                quantitySamplePredicate: predicate,
+                                                options: .cumulativeSum,
+                                                anchorDate: calendar.date(from: anchorComponents)!,
+                                                intervalComponents: interval)
+
+        query.initialResultsHandler = { query, queryResult, error in
+            guard let queryResult = queryResult else {
+                let error = error! as NSError
+                print("Error getting hydration per day of week: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    result(nil)
+                }
+                return
+            }
+
+            var hydrationPerDay: [Int] = []
+
+            queryResult.enumerateStatistics(from: startDate, to: endDate) { statistics, stop in
+                if let quantity = statistics.sumQuantity() {
+                    let water = quantity.doubleValue(for: HKUnit.count())
+                    hydrationPerDay.append(Int(water))
+                } else {
+                    hydrationPerDay.append(0)
+                }
+            }
+
+            DispatchQueue.main.async {
+                result(hydrationPerDay)
+            }
+        }
+
+        HKHealthStore().execute(query)
+    }
+
+    func getTotalHydrationInIntervalByHour(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        let arguments = call.arguments as? NSDictionary
+        let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
+        let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
+
+        let startDate = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
+        let endDate = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
+
+        let sampleType = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
+        let predicate = HKQuery.predicateForSamples(
+            withStart: startDate, end: endDate, options: .strictStartDate)
+
+        let interval = DateComponents(hour: 1)
+
+        let query = HKStatisticsCollectionQuery(quantityType: sampleType,
+                                                quantitySamplePredicate: predicate,
+                                                options: .cumulativeSum,
+                                                anchorDate: startDate,
+                                                intervalComponents: interval)
+
+        query.initialResultsHandler = { query, queryResult, error in
+            guard let queryResult = queryResult else {
+                let error = error! as NSError
+                print("Error getting hydration per hour of day: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    result(nil)
+                }
+                return
+            }
+
+            var hydrationPerHour: [Int] = Array(repeating: 0, count: 24)
+
+            queryResult.enumerateStatistics(from: startDate, to: endDate) { statistics, stop in
+                let calendar = Calendar.current
+                let hour = calendar.component(.hour, from: statistics.startDate)
+                if let quantity = statistics.sumQuantity() {
+                    let water = quantity.doubleValue(for: HKUnit.count())
+                    hydrationPerHour[hour] = Int(water)
+                }
+            }
+
+            DispatchQueue.main.async {
+                result(hydrationPerHour)
+            }
+        }
+
+        HKHealthStore().execute(query)
+    }
+
     func unitLookUp(key: String) -> HKUnit {
         guard let unit = unitDict[key] else {
             return HKUnit.count()
