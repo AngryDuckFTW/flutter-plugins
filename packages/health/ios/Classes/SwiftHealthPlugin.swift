@@ -158,11 +158,6 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
             getTotalStepsInIntervalByHour(call: call, result: result)
         }
 
-        /// Handle getTotalHydrationInInterval
-        else if call.method.elementsEqual("getTotalHydrationInInterval") {
-            getTotalHydrationInInterval(call: call, result: result)
-        }
-
         /// Handle getTotalHydrationInIntervalByDay
         else if call.method.elementsEqual("getTotalHydrationInIntervalByDay") {
             getTotalHydrationInIntervalByDay(call: call, result: result)
@@ -964,42 +959,6 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
         HKHealthStore().execute(query)
     }
 
-    func getTotalHydrationInInterval(call: FlutterMethodCall, result: @escaping FlutterResult) {
-        let arguments = call.arguments as? NSDictionary
-        let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
-        let endTime = (arguments?["endTime"] as? NSNumber) ?? 0
-        // Convert dates from milliseconds to Date()
-        let dateFrom = Date(timeIntervalSince1970: startTime.doubleValue / 1000)
-        let dateTo = Date(timeIntervalSince1970: endTime.doubleValue / 1000)
-        let sampleType = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
-        let predicate = HKQuery.predicateForSamples(
-            withStart: dateFrom, end: dateTo, options: .strictStartDate)
-        let query = HKStatisticsQuery(
-            quantityType: sampleType,
-            quantitySamplePredicate: predicate,
-            options: .cumulativeSum
-        ) { query, queryResult, error in
-            guard let queryResult = queryResult else {
-                let error = error! as NSError
-                print("Error getting total hydration in interval \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    result(nil)
-                }
-                return
-            }
-            var water = 0.0
-            if let quantity = queryResult.sumQuantity() {
-                let unit = HKUnit.count()
-                water = quantity.doubleValue(for: unit)
-            }
-            let totalWater = Int(water)
-            DispatchQueue.main.async {
-                result(totalWater)
-            }
-        }
-        HKHealthStore().execute(query)
-    }
-
     func getTotalHydrationInIntervalByDay(call: FlutterMethodCall, result: @escaping FlutterResult) {
         let arguments = call.arguments as? NSDictionary
         let startTime = (arguments?["startTime"] as? NSNumber) ?? 0
@@ -1034,14 +993,14 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                 return
             }
 
-            var hydrationPerDay: [Int] = []
+            var hydrationPerDay: [Double] = []
 
             queryResult.enumerateStatistics(from: startDate, to: endDate) { statistics, stop in
                 if let quantity = statistics.sumQuantity() {
-                    let water = quantity.doubleValue(for: HKUnit.count())
-                    hydrationPerDay.append(Int(water))
+                    let water = quantity.doubleValue(for: HKUnit.liter())
+                    hydrationPerDay.append(water)
                 } else {
-                    hydrationPerDay.append(0)
+                    hydrationPerDay.append(0.0)
                 }
             }
 
@@ -1083,14 +1042,14 @@ public class SwiftHealthPlugin: NSObject, FlutterPlugin {
                 return
             }
 
-            var hydrationPerHour: [Int] = Array(repeating: 0, count: 24)
+            var hydrationPerHour: [Double] = Array(repeating: 0.0, count: 24)
 
             queryResult.enumerateStatistics(from: startDate, to: endDate) { statistics, stop in
                 let calendar = Calendar.current
                 let hour = calendar.component(.hour, from: statistics.startDate)
                 if let quantity = statistics.sumQuantity() {
-                    let water = quantity.doubleValue(for: HKUnit.count())
-                    hydrationPerHour[hour] = Int(water)
+                    let water = quantity.doubleValue(for: HKUnit.liter())
+                    hydrationPerHour[hour] = water
                 }
             }
 
